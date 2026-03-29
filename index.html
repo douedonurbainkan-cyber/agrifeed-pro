@@ -3,82 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-
-<!-- ═══ SEO / RÉFÉRENCEMENT GOOGLE ═══ -->
-<title>AgriFeed Pro — Logiciel de gestion de moulin d'aliments pour animaux | Côte d'Ivoire</title>
-<meta name="description" content="AgriFeed Pro : logiciel professionnel de gestion de moulin d'aliments pour volailles et animaux. Commandes, formules, inventaire, facturation. Côte d'Ivoire."/>
-<meta name="keywords" content="moulin aliments animaux, gestion moulin, aliment volaille, poulet chair, pondeuse, Côte d'Ivoire, AgriFeed Pro, logiciel moulin, formule aliment, sac aliment"/>
-<meta name="author" content="Kan Douedon Urbain"/>
-<meta name="robots" content="index, follow"/>
-<link rel="canonical" href="https://douedonurbainkan-cyber.github.io/agrifeed-pro"/>
-
-<!-- Open Graph (WhatsApp / Facebook) -->
-<meta property="og:title" content="AgriFeed Pro — Gestion de moulin d'aliments"/>
-<meta property="og:description" content="Gérez votre moulin d'aliments pour animaux facilement : commandes, formules, inventaire, facturation en temps réel."/>
-<meta property="og:type" content="website"/>
-<meta property="og:url" content="https://douedonurbainkan-cyber.github.io/agrifeed-pro"/>
-<meta property="og:locale" content="fr_CI"/>
-
-<!-- Google Search Console verification (à remplir après) -->
-<!-- <meta name="google-site-verification" content="VOTRE_CODE_ICI"/> -->
 <meta name="theme-color" content="#0d2b0d"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="AgriFeed Pro"/>
-<link rel="manifest" id="pwa-manifest"/>
-<script>
-// Créer une icône PNG via Canvas
-function createAppIcon(size) {
-  var canvas = document.createElement("canvas");
-  canvas.width = size; canvas.height = size;
-  var ctx = canvas.getContext("2d");
-  // Fond vert foncé arrondi
-  var r = size * 0.22;
-  ctx.beginPath();
-  ctx.moveTo(r, 0); ctx.lineTo(size-r, 0);
-  ctx.quadraticCurveTo(size, 0, size, r);
-  ctx.lineTo(size, size-r);
-  ctx.quadraticCurveTo(size, size, size-r, size);
-  ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size-r);
-  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
-  ctx.closePath();
-  var grad = ctx.createLinearGradient(0,0,size,size);
-  grad.addColorStop(0, "#0d2b0d");
-  grad.addColorStop(1, "#2d6e2d");
-  ctx.fillStyle = grad;
-  ctx.fill();
-  // Épi de blé
-  ctx.font = (size*0.62)+"px serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("🌾", size/2, size/2);
-  return canvas.toDataURL("image/png");
-}
-
-// Générer les icônes et créer le manifest
-window.addEventListener("DOMContentLoaded", function() {
-  var icon192 = createAppIcon(192);
-  var icon512 = createAppIcon(512);
-  var manifest = {
-    name: "AgriFeed Pro",
-    short_name: "AgriFeed",
-    description: "Gestion de moulin d'aliments pour animaux",
-    start_url: "./",
-    display: "standalone",
-    background_color: "#0d2b0d",
-    theme_color: "#0d2b0d",
-    orientation: "portrait",
-    icons: [
-      {src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable"},
-      {src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable"}
-    ]
-  };
-  var blob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
-  var url = URL.createObjectURL(blob);
-  document.getElementById("pwa-manifest").href = url;
-});
-</script>
+<link rel="manifest" href="manifest.json"/>
 <title>AgriFeed Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -188,24 +118,20 @@ function fbUpdate(col, id, data) {
 }
 
 // ─── EXCEL ────────────────────────────────────────────────────
-function dlExcel(mats, orders, nom, ville, customFmls, mainOeuvre) {
-  customFmls = customFmls || {};
-  mainOeuvre = mainOeuvre || 0;
+function dlExcel(mats, orders, nom, ville) {
   const X = window.XLSX;
   const wb = X.utils.book_new();
   const d = today();
 
   const r1 = [[nom+" — Calculateur | "+d],[],["PRIX MATIÈRES"],["Matière","Unité","Prix FCFA"]];
-  mats.forEach(function(m){ r1.push([m.nom,"/"+m.u,m.p]); });
+  mats.forEach(m => r1.push([m.nom,"/"+m.u,m.p]));
   r1.push([]);
-  FMLS.forEach(function(f) {
-    var ps = Math.round(calcP(f,mats,customFmls) + Number(mainOeuvre));
+  FMLS.forEach(f => {
+    const ps = Math.round(calcP(f,mats,customFmls));
     r1.push([f.e+" "+f.nom],["Ingrédient","Qté/sac","Prix","Coût/sac","%"]);
-    var compoActif = (customFmls[f.id]&&customFmls[f.id].compo) ? customFmls[f.id].compo : f.compo;
-    Object.keys(compoActif).forEach(function(id) {
-      var qty = compoActif[id];
-      var m = mats.find(function(m){ return m.id===id; }); if(!m) return;
-      var cs = Math.round(qty*m.p);
+    Object.entries(f.compo).forEach(([id,qty]) => {
+      const m = mats.find(m=>m.id===id); if(!m) return;
+      const cs = Math.round(qty*m.p);
       r1.push([m.nom, qty, m.p, cs, ps>0?(cs/ps*100).toFixed(1)+"%":""]);
     });
     r1.push(["TOTAL/SAC","","",ps,"100%"]); r1.push([]);
@@ -214,19 +140,19 @@ function dlExcel(mats, orders, nom, ville, customFmls, mainOeuvre) {
   ws1["!cols"] = [{wch:26},{wch:10},{wch:14},{wch:16},{wch:8}];
   X.utils.book_append_sheet(wb, ws1, "Calcul Aliments");
 
-  var cj = orders.filter(function(o){ return o.date===today(); });
+  const cj = orders.filter(o=>o.date===today());
   const r2 = [[nom+" — Journal | "+d],["Ville:"+(ville||"—"),"","Employé: ___"],[],
     ["N°","Heure","Client","Tél","Aliment","Sacs","Poids","Prix/sac","Montant","Statut","Note"]];
-  cj.forEach(function(o,i){ var f=FMLS.find(function(f){ return f.id===o.fId; }); r2.push([i+1,"",o.client,o.tel,f?f.nom:"",o.sacs,o.sacs*50,o.prix,o.sacs*o.prix,ST[o.status]?ST[o.status].label:"",o.note]); });
+  cj.forEach((o,i) => { const f=FMLS.find(f=>f.id===o.fId); r2.push([i+1,"",o.client,o.tel,f?f.nom:"",o.sacs,o.sacs*50,o.prix,o.sacs*o.prix,ST[o.status]?ST[o.status].label:"",o.note]); });
   for(let i=cj.length;i<30;i++) r2.push([i+1]);
-  r2.push([],["RÉCAP"],["Total cmds",cj.length],["Total sacs",cj.reduce(function(s,o){ return s+o.sacs; },0)]);
+  r2.push([],["RÉCAP"],["Total cmds",cj.length],["Total sacs",cj.reduce((s,o)=>s+o.sacs,0)]);
   const ws2 = X.utils.aoa_to_sheet(r2);
   ws2["!cols"] = [{wch:4},{wch:8},{wch:22},{wch:14},{wch:26},{wch:7},{wch:10},{wch:14},{wch:16},{wch:14},{wch:20}];
   X.utils.book_append_sheet(wb, ws2, "Journal Journalier");
 
   const r3 = [[nom+" — Registre | "+d],[],["N°","Date","Client","Tél","Aliment","Sacs","Prix/sac","Total","Statut","Note"]];
-  orders.forEach(function(o){ var f=FMLS.find(function(f){ return f.id===o.fId; }); r3.push([o.id,o.date,o.client,o.tel,f?f.e+" "+f.nom:o.fId,o.sacs,o.prix,o.sacs*o.prix,ST[o.status]?ST[o.status].label:"",o.note]); });
-  r3.push(["TOTAL","","","","",orders.reduce(function(s,o){ return s+o.sacs; },0),"",orders.reduce(function(s,o){ return s+o.sacs*o.prix; },0)]);
+  orders.forEach(o => { const f=FMLS.find(f=>f.id===o.fId); r3.push([o.id,o.date,o.client,o.tel,f?f.e+" "+f.nom:o.fId,o.sacs,o.prix,o.sacs*o.prix,ST[o.status]?ST[o.status].label:"",o.note]); });
+  r3.push(["TOTAL","","","","",orders.reduce((s,o)=>s+o.sacs,0),"",orders.reduce((s,o)=>s+o.sacs*o.prix,0)]);
   const ws3 = X.utils.aoa_to_sheet(r3);
   ws3["!cols"] = [{wch:10},{wch:12},{wch:22},{wch:14},{wch:28},{wch:7},{wch:12},{wch:16},{wch:14},{wch:20}];
   X.utils.book_append_sheet(wb, ws3, "Toutes commandes");
@@ -454,270 +380,6 @@ function SuperAdmin(props) {
   );
 }
 
-
-
-// ─── FONCTION IMPRESSION REÇU ──────────────────────────────────
-function imprimerRecu(o, moulin, FMLS, fmt) {
-  var f   = FMLS.find(function(f){ return f.id===o.fId; });
-  var nomF = f ? f.nom : o.fId;
-  var total = o.sacs * o.prix;
-  var d = new Date(o.createdAt || Date.now());
-  var dateStr = d.toLocaleDateString("fr-FR") + " à " + d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Reçu '+o.id+'</title>'+
-  '<style>'+
-  'body{font-family:Arial,sans-serif;max-width:400px;margin:0 auto;padding:20px;font-size:14px;}'+
-  '.header{text-align:center;border-bottom:2px solid #0d2b0d;padding-bottom:16px;margin-bottom:16px;}'+
-  '.logo{font-size:32px;margin-bottom:4px;}'+
-  '.moulin{font-size:18px;font-weight:bold;color:#0d2b0d;}'+
-  '.ref{text-align:center;background:#f0faf0;border-radius:8px;padding:8px;margin:12px 0;font-size:12px;color:#6b7280;}'+
-  '.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;}'+
-  '.row.total{font-weight:bold;font-size:16px;color:#0d2b0d;border-top:2px solid #0d2b0d;border-bottom:none;margin-top:8px;padding-top:10px;}'+
-  '.status{text-align:center;margin:16px 0;padding:8px;border-radius:8px;font-weight:bold;}'+
-  '.footer{text-align:center;font-size:11px;color:#9ca3af;margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;}'+
-  '@media print{button{display:none!important;}}'+
-  '</style></head><body>'+
-  '<div class="header">'+
-    '<div class="logo">🌾</div>'+
-    '<div class="moulin">'+moulin.nom+'</div>'+
-    (moulin.tel?'<div style="font-size:12px;color:#6b7280;">📞 '+moulin.tel+'</div>':'')+
-    (moulin.ville?'<div style="font-size:12px;color:#6b7280;">📍 '+moulin.ville+'</div>':'')+
-  '</div>'+
-  '<div class="ref">🆔 '+o.id+' • '+dateStr+'</div>'+
-  '<div class="row"><span>👤 Client</span><span><b>'+o.client+'</b></span></div>'+
-  (o.tel?'<div class="row"><span>📞 Téléphone</span><span>'+o.tel+'</span></div>':'')+
-  '<div class="row"><span>🐔 Formule</span><span>'+nomF+'</span></div>'+
-  '<div class="row"><span>📦 Quantité</span><span>'+o.sacs+' sac(s) × 50kg</span></div>'+
-  '<div class="row"><span>💰 Prix / sac</span><span>'+fmt(o.prix)+'</span></div>'+
-  (o.note?'<div class="row"><span>📝 Note</span><span>'+o.note+'</span></div>':'')+
-  '<div class="row total"><span>TOTAL</span><span>'+fmt(total)+'</span></div>'+
-  '<div class="status" style="background:'+(o.status==="livre"?"#D1FAE5":o.status==="pret"?"#DCFCE7":"#FEF9C3")+';color:'+(o.status==="livre"?"#059669":"#0d2b0d")+'">'+
-    (o.status==="livre"?"🚚 Livré":o.status==="pret"?"✅ Prêt":o.status==="en_production"?"⚙️ En production":"⏳ En attente")+
-  '</div>'+
-  '<div style="text-align:center;margin:12px 0;">'+
-    '<button onclick="window.print()" style="background:#0d2b0d;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-weight:bold;">🖨️ Imprimer</button>'+
-  '</div>'+
-  '<div class="footer">Merci de votre confiance !<br/>'+moulin.nom+' — AgriFeed Pro</div>'+
-  '</body></html>';
-
-  var win = window.open("","_blank","width=480,height=700");
-  if(win) { win.document.write(html); win.document.close(); }
-}
-
-// ─── COMPOSANT INVENTAIRE ──────────────────────────────────────
-function InventaireTab(props) {
-  var mats = props.mats || [];
-  var achats = props.achats || [];
-  var setAchats = props.setAchats;
-  var orders = props.orders || [];
-  var customFmls = props.customFmls || {};
-  var gc = props.gc || "#2d6e2d";
-  var card = props.card || {};
-  var fmt = props.fmt || function(v){ return v+" F"; };
-
-  var [selMat,  setSelMat]  = React.useState(mats[0]?mats[0].id:"");
-  var [qteAch,  setQteAch]  = React.useState("");
-  var [dateAch, setDateAch] = React.useState(new Date().toISOString().slice(0,10));
-  var [msg,     setMsg]     = React.useState("");
-
-  // Calculer consommation par ingrédient depuis les commandes livrées
-  function calcConso() {
-    var conso = {};
-    orders.forEach(function(o) {
-      if(o.status !== "livre") return;
-      var fml = FMLS.find(function(f){ return f.id===o.fId; });
-      if(!fml) return;
-      var compo = (customFmls[o.fId]&&customFmls[o.fId].compo) ? customFmls[o.fId].compo : fml.compo;
-      var nbSacs = Number(o.qte) || 1;
-      Object.keys(compo).forEach(function(ing){
-        conso[ing] = (conso[ing]||0) + compo[ing]*nbSacs;
-      });
-    });
-    return conso;
-  }
-
-  // Calculer total acheté par ingrédient
-  function calcAchats() {
-    var totaux = {};
-    achats.forEach(function(a){
-      totaux[a.matId] = (totaux[a.matId]||0) + Number(a.qte);
-    });
-    return totaux;
-  }
-
-  var conso   = calcConso();
-  var totAch  = calcAchats();
-
-  function ajouterAchat() {
-    if(!selMat || !qteAch || Number(qteAch)<=0){ setMsg("⚠️ Remplissez tous les champs"); return; }
-    var newAchat = {id: Date.now()+"", matId:selMat, qte:Number(qteAch), date:dateAch};
-    var updated = [newAchat].concat(achats);
-    setAchats(updated);
-    fbSave("config","achats",{list:updated});
-    setQteAch("");
-    setMsg("✅ Achat enregistré !");
-    setTimeout(function(){ setMsg(""); }, 2000);
-  }
-
-  function supprimerAchat(id) {
-    var updated = achats.filter(function(a){ return a.id!==id; });
-    setAchats(updated);
-    fbSave("config","achats",{list:updated});
-  }
-
-  var inp = {width:"100%",border:"2px solid #e2e8e2",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none",boxSizing:"border-box"};
-
-  return (
-    <div style={{display:"grid",gap:16}}>
-
-      {/* Ajouter un achat */}
-      <div style={Object.assign({},card,{background:"#f0faf0"})}>
-        <h3 style={{color:"#1a2e1a",marginBottom:14,fontSize:15}}>➕ Enregistrer un achat</h3>
-        <div style={{display:"grid",gap:8}}>
-          <div>
-            <label style={{fontSize:11,fontWeight:700,color:"#6b7280",display:"block",marginBottom:4}}>INGRÉDIENT</label>
-            <select style={inp} value={selMat} onChange={function(e){setSelMat(e.target.value);}}>
-              {mats.map(function(m){ return <option key={m.id} value={m.id}>{m.nom}</option>; })}
-            </select>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <div>
-              <label style={{fontSize:11,fontWeight:700,color:"#6b7280",display:"block",marginBottom:4}}>QUANTITÉ (kg/pce)</label>
-              <input type="number" min="0" step="0.5" style={inp} placeholder="ex: 500" value={qteAch}
-                onChange={function(e){setQteAch(e.target.value);}}/>
-            </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:700,color:"#6b7280",display:"block",marginBottom:4}}>DATE</label>
-              <input type="date" style={inp} value={dateAch}
-                onChange={function(e){setDateAch(e.target.value);}}/>
-            </div>
-          </div>
-          <button onClick={ajouterAchat}
-            style={{background:"linear-gradient(135deg,#0d2b0d,"+gc+")",color:"#fff",border:"none",
-              borderRadius:10,padding:"11px",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            💾 Enregistrer l'achat
-          </button>
-          {msg && <div style={{background:msg.includes("✅")?"#f0faf0":"#FEF2F2",borderRadius:8,padding:"8px 12px",fontSize:13,
-            color:msg.includes("✅")?"#059669":"#EF4444",fontWeight:600}}>{msg}</div>}
-        </div>
-      </div>
-
-      {/* Stock actuel */}
-      <div style={card}>
-        <h3 style={{color:"#1a2e1a",marginBottom:4,fontSize:15}}>📊 Stock en temps réel</h3>
-        <p style={{fontSize:11,color:"#6b7280",marginBottom:14}}>Basé sur vos achats moins les commandes livrées</p>
-        <div style={{display:"grid",gap:8}}>
-          {mats.map(function(m){
-            var ach  = totAch[m.id]  || 0;
-            var cons = conso[m.id]   || 0;
-            var rest = ach - cons;
-            var pct  = ach>0 ? Math.min(100,Math.round(rest/ach*100)) : 0;
-            var color = rest<=0?"#EF4444":pct<25?"#F59E0B":pct<50?"#EAB308":"#22c55e";
-            if(ach===0 && cons===0) return null;
-            return (
-              <div key={m.id} style={{background:rest<=0?"#FEF2F2":"#f8fdf8",borderRadius:12,padding:"12px 14px",border:"1px solid "+(rest<=0?"#fecaca":"#c6e6c6")}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <span style={{fontWeight:700,fontSize:13,color:"#1a2e1a"}}>{m.nom}</span>
-                  <span style={{fontWeight:800,fontSize:15,color:color}}>{rest<=0?"⚠️ ":"✅ "}{rest.toFixed(1)} {m.u}</span>
-                </div>
-                <div style={{background:"#e5e7eb",borderRadius:999,height:6,overflow:"hidden"}}>
-                  <div style={{width:pct+"%",background:color,height:"100%",borderRadius:999,transition:"width 0.3s"}}/>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#9ca3af",marginTop:4}}>
-                  <span>Acheté: {ach.toFixed(1)} {m.u}</span>
-                  <span>Consommé: {cons.toFixed(1)} {m.u}</span>
-                </div>
-              </div>
-            );
-          })}
-          {Object.keys(totAch).length===0 && (
-            <div style={{textAlign:"center",color:"#9ca3af",padding:20,fontSize:13}}>
-              Aucun achat enregistré — ajoutez vos achats ci-dessus 👆
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Historique des achats */}
-      {achats.length>0 && (
-        <div style={card}>
-          <h3 style={{color:"#1a2e1a",marginBottom:14,fontSize:15}}>📋 Historique des achats</h3>
-          <div style={{display:"grid",gap:6}}>
-            {achats.slice(0,20).map(function(a){
-              var mat = mats.find(function(m){ return m.id===a.matId; });
-              return (
-                <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                  background:"#f8fdf8",borderRadius:10,padding:"10px 14px",border:"1px solid #e5e7eb"}}>
-                  <div>
-                    <span style={{fontWeight:700,fontSize:13,color:"#1a2e1a"}}>{mat?mat.nom:a.matId}</span>
-                    <span style={{fontSize:11,color:"#6b7280",marginLeft:8}}>{a.date}</span>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontWeight:700,color:gc}}>{a.qte} {mat?mat.u:"kg"}</span>
-                    <button onClick={function(){supprimerAchat(a.id);}}
-                      style={{background:"#FEE2E2",color:"#EF4444",border:"none",borderRadius:8,
-                        padding:"4px 8px",cursor:"pointer",fontSize:12,fontWeight:700}}>✕</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── COMPOSANT CHANGEMENT PIN ─────────────────────────────────
-function PinChanger(props) {
-  var employeePin = props.employeePin;
-  var setEmployeePin = props.setEmployeePin;
-  var gc = props.gc || "#2d6e2d";
-  var [oldPin,  setOldPin]  = useState("");
-  var [newPin,  setNewPin]  = useState("");
-  var [newPin2, setNewPin2] = useState("");
-  var [msg,     setMsg]     = useState("");
-  var [ok,      setOk]      = useState(false);
-
-  function sauvegarder() {
-    if(!oldPin || !newPin || !newPin2){ setMsg("⚠️ Remplissez tous les champs"); setOk(false); return; }
-    if(oldPin !== employeePin){ setMsg("⚠️ Ancien code incorrect"); setOk(false); return; }
-    if(newPin.length < 4){ setMsg("⚠️ Le nouveau code doit avoir au moins 4 chiffres"); setOk(false); return; }
-    if(newPin !== newPin2){ setMsg("⚠️ Les deux nouveaux codes ne correspondent pas"); setOk(false); return; }
-    setEmployeePin(newPin);
-    lsSet("employeePin", newPin);
-    fbSave("config","employeePin",{pin:newPin});
-    setMsg("✅ Code changé avec succès !");
-    setOk(true);
-    setOldPin(""); setNewPin(""); setNewPin2("");
-    setTimeout(function(){ setMsg(""); }, 3000);
-  }
-
-  var inp2 = {width:"100%",border:"2px solid #e2e8e2",borderRadius:10,padding:"10px 12px",fontSize:18,letterSpacing:6,textAlign:"center",outline:"none",boxSizing:"border-box"};
-
-  return (
-    <div style={{display:"grid",gap:8}}>
-      <div>
-        <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,marginBottom:4}}>ANCIEN CODE</label>
-        <input type="password" maxLength={8} style={inp2} placeholder="••••" value={oldPin} onChange={function(e){setOldPin(e.target.value);setMsg("");}}/>
-      </div>
-      <div>
-        <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,marginBottom:4}}>NOUVEAU CODE</label>
-        <input type="password" maxLength={8} style={inp2} placeholder="••••" value={newPin} onChange={function(e){setNewPin(e.target.value);setMsg("");}}/>
-      </div>
-      <div>
-        <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,marginBottom:4}}>CONFIRMER NOUVEAU CODE</label>
-        <input type="password" maxLength={8} style={inp2} placeholder="••••" value={newPin2} onChange={function(e){setNewPin2(e.target.value);setMsg("");}}/>
-      </div>
-      <button onClick={sauvegarder} style={{background:"linear-gradient(135deg,#0d2b0d,"+gc+")",color:"#fff",border:"none",borderRadius:10,padding:"11px",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>
-        💾 Enregistrer le nouveau code
-      </button>
-      {msg && <div style={{background:ok?"#f0faf0":"#FEF2F2",borderRadius:8,padding:"8px 12px",fontSize:13,color:ok?"#059669":"#EF4444",fontWeight:600}}>{msg}</div>}
-      <div style={{fontSize:11,color:"#9ca3af",textAlign:"center"}}>Code actuel : {"•".repeat(employeePin.length)} ({employeePin.length} caractères)</div>
-    </div>
-  );
-}
-
 // ─── HEADER (défini hors de App) ──────────────────────────────
 function AppHeader(props) {
   var moulin = props.moulin;
@@ -773,9 +435,6 @@ function App() {
   ]); });
   const [fClients,  setFClients]  = useState(function(){ return lsGet("fClients",[]); });
   const [prixVente,  setPrixVente]  = useState(function(){ return lsGet("prixVente",{}); });
-  const [employeePin, setEmployeePin] = useState(function(){ return lsGet("employeePin","1234"); });
-  const [mainOeuvre,  setMainOeuvre]  = useState(function(){ return lsGet("mainOeuvre", 500); });
-  const [achats,      setAchats]      = useState(function(){ return lsGet("achats", []); });
   const [customFmls, setCustomFmls] = useState(function(){ return lsGet("customFmls",{}); });
   const [prixIngs,  setPrixIngs]  = useState(function(){ return lsGet("prixIngs",{}); });
   const [editIngP,  setEditIngP]  = useState({});
@@ -800,10 +459,7 @@ function App() {
   useEffect(function(){ lsSet("moulin",    moulin);    }, [moulin]);
   useEffect(function(){ lsSet("mats",      mats);      }, [mats]);
   useEffect(function(){ lsSet("prixVente",  prixVente);  }, [prixVente]);
-  useEffect(function(){ lsSet("customFmls",   customFmls);  }, [customFmls]);
-  useEffect(function(){ lsSet("employeePin", employeePin); }, [employeePin]);
-  useEffect(function(){ lsSet("mainOeuvre",  mainOeuvre);  }, [mainOeuvre]);
-  useEffect(function(){ lsSet("achats",      achats);      }, [achats]);
+  useEffect(function(){ lsSet("customFmls", customFmls); }, [customFmls]);
   useEffect(function(){ lsSet("prixIngs",  prixIngs);  }, [prixIngs]);
 
   // ── Firebase temps réel ──
@@ -964,7 +620,32 @@ function App() {
   if(superAdmin) return <SuperAdmin onExit={function(){setSuperAdmin(false);setSaCode("");}}/>;
 
   // ══ LICENCE GATE ══
-   // ══ ACCUEIL ══
+  if(!licOk) {
+    return (
+      <div>
+        <LicenceGate onUnlock={function(lic){
+          if(lic.moulin==="__SUPERADMIN__"){ setSuperAdmin(true); return; }
+          if(lic.moulin){ setMoulin(function(p){return Object.assign({},p,{nom:lic.moulin,ville:lic.pays||p.ville});}); }
+          setLicOk(true);
+        }}/>
+        {/* Code secret propriétaire — triple tap invisible */}
+        <div style={{position:"fixed",bottom:0,right:0,width:60,height:60,opacity:0,cursor:"pointer",zIndex:9999}}
+          onClick={function(){
+            var n = (parseInt(lsGet("sa_tap",0))||0)+1;
+            lsSet("sa_tap",n);
+            if(n>=3){
+              lsSet("sa_tap",0);
+              var c2 = prompt("Code propriétaire AgriFeed Pro :");
+              if(c2===SUPER_ADMIN_CODE){ setSuperAdmin(true); }
+            }
+            setTimeout(function(){lsSet("sa_tap",0);},2000);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ══ ACCUEIL ══
   if(view==="accueil") {
     return (
       <PageWrap moulin={moulin} gc={gc} back={false} goHome={goHome}>
@@ -1013,21 +694,6 @@ function App() {
             <div style={{color:"#f59e0b",fontSize:20,fontWeight:700}}>→</div>
           </div>
         </div>
-      {/* ── Mentions légales ── */}
-      <div style={{textAlign:"center",padding:"20px 16px 8px",borderTop:"1px solid #e5e7eb",marginTop:8}}>
-        <div style={{fontSize:11,color:"#9ca3af",lineHeight:1.6}}>
-          <div style={{fontWeight:700,color:"#6b7280",marginBottom:4}}>© 2025 AgriFeed Pro</div>
-          <div>Tous droits réservés — Logiciel propriétaire</div>
-          <div>Reproduction et copie interdites sans autorisation</div>
-          <div style={{marginTop:4,fontSize:10}}>
-            Développé par <span style={{fontWeight:700,color:"#2d6e2d"}}>AgriFeed Pro™</span> · Côte d'Ivoire
-          </div>
-          <div style={{marginTop:2,fontSize:10}}>
-            Protection OAPI en cours · v2.0.2025
-          </div>
-        </div>
-      </div>
-
       </PageWrap>
     );
   }
@@ -1462,9 +1128,9 @@ function App() {
             <input type="password" maxLength={6} style={Object.assign({},inp,{textAlign:"center",fontSize:22,letterSpacing:8,marginBottom:10})}
               placeholder="••••" value={aCode}
               onChange={function(e){setACode(e.target.value);setAErr(false);}}
-              onKeyDown={function(e){if(e.key==="Enter"){if(aCode===employeePin){setAdminOk(true);setACode("");}else{setAErr(true);}}}}/>
+              onKeyDown={function(e){if(e.key==="Enter"){if(aCode==="1234"){setAdminOk(true);setACode("");}else{setAErr(true);}}}}/>
             {aErr && <div style={{color:"#EF4444",fontSize:12,marginBottom:8}}>Code incorrect.</div>}
-            <button style={Object.assign({},mkBtn(),{width:"100%"})} onClick={function(){if(aCode===employeePin){setAdminOk(true);setACode("");}else{setAErr(true);}}}>Accéder</button>
+            <button style={Object.assign({},mkBtn(),{width:"100%"})} onClick={function(){if(aCode==="1234"){setAdminOk(true);setACode("");}else{setAErr(true);}}}>Accéder</button>
             <p style={{fontSize:10,color:"#d1d5db",marginTop:12}}>Code par défaut : 1234</p>
           </div>
         </div>
@@ -1503,7 +1169,7 @@ function App() {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:5,marginBottom:22,background:"#fff",borderRadius:20,padding:7,boxShadow:"0 4px 18px rgba(45,110,45,0.14)",flexWrap:"wrap"}}>
-        {[{id:"commandes",l:"📋 Commandes"},{id:"fc",l:"🔬 Formules"+(nbFC>0?" ("+nbFC+")":"")},{id:"matieres",l:"💰 Prix matières"},{id:"prixvente",l:"🏷️ Prix de vente"},{id:"prixings",l:"🧪 Prix ingrédients"},{id:"inventaire",l:"📦 Inventaire"},{id:"formules",l:"📊 Formules std"},{id:"excel",l:"📥 Excel"},{id:"qr",l:"📱 QR Code"},{id:"config",l:"⚙️ Moulin"}].map(function(t){
+        {[{id:"commandes",l:"📋 Commandes"},{id:"fc",l:"🔬 Formules"+(nbFC>0?" ("+nbFC+")":"")},{id:"matieres",l:"💰 Prix matières"},{id:"prixvente",l:"🏷️ Prix de vente"},{id:"prixings",l:"🧪 Prix ingrédients"},{id:"formules",l:"📊 Formules std"},{id:"excel",l:"📥 Excel"},{id:"qr",l:"📱 QR Code"},{id:"config",l:"⚙️ Moulin"}].map(function(t){
           return <button key={t.id} onClick={function(){setTab(t.id);}} style={{background:tab===t.id?gc:"transparent",color:tab===t.id?"#fff":"#6b7280",border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:13}}>{t.l}</button>;
         })}
       </div>
@@ -1532,28 +1198,10 @@ function App() {
                     <div style={{fontSize:16,fontWeight:700,color:gc,marginBottom:8}}>{fmt(o.sacs*o.prix)}</div>
                     <div style={{display:"flex",gap:7}}>
                       {NEXT[o.status] && (
-                        <button onClick={function(){
-                            var nextSt = NEXT[o.status];
-                            fbUpdate("orders",o.id,{status:nextSt});
-                            setOrders(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{status:nextSt}):x;});});
-                            // Notification WhatsApp si commande prête
-                            if(nextSt==="pret" && o.tel) {
-                              var f = FMLS.find(function(f){return f.id===o.fId;});
-                              var nomF = f ? f.nom : o.fId;
-                              var msg = "Bonjour "+o.client+" 👋%0A%0A✅ Votre commande est *PRÊTE* !%0A%0A📦 "+o.sacs+" sac(s) de *"+nomF+"*%0A💰 Total : *"+fmt(o.sacs*o.prix)+" FCFA*%0A🆔 Réf: "+o.id+"%0A%0AMerci de votre confiance ! 🌾%0A— "+moulin.nom;
-                              var tel = o.tel.replace(/[^0-9]/g,"");
-                              if(tel.length>=8) window.open("https://wa.me/225"+tel+"?text="+msg,"_blank");
-                            }
-                          }} style={{background:ST[NEXT[o.status]].bg,color:ST[NEXT[o.status]].color,border:"1px solid "+ST[NEXT[o.status]].color,borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>
+                        <button onClick={function(){fbUpdate("orders",o.id,{status:NEXT[o.status]});setOrders(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{status:NEXT[o.status]}):x;});});}} style={{background:ST[NEXT[o.status]].bg,color:ST[NEXT[o.status]].color,border:"1px solid "+ST[NEXT[o.status]].color,borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>
                           {ST[NEXT[o.status]].icon} {ST[NEXT[o.status]].label}
                         </button>
                       )}
-                      {/* Bouton Imprimer reçu */}
-                      <button onClick={function(){ imprimerRecu(o,moulin,FMLS,fmt); }}
-                        style={{background:"#EFF6FF",color:"#1D4ED8",border:"1px solid #BFDBFE",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>
-                        🖨️ Reçu
-                      </button>
-
                       {o.status!=="livre" && o.status!=="annulee" && (
                         <button onClick={function(){fbUpdate("orders",o.id,{status:"annulee"});setOrders(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{status:"annulee"}):x;});});}} style={{background:"#FEE2E2",color:"#EF4444",border:"1px solid #EF4444",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:11}}>✕</button>
                       )}
@@ -1784,20 +1432,7 @@ function App() {
       )}
 
       {/* ── Formules std ── */}
-      {tab==="inventaire" && (
-      <InventaireTab
-        mats={mats}
-        achats={achats}
-        setAchats={setAchats}
-        orders={orders}
-        customFmls={customFmls}
-        gc={gc}
-        card={card}
-        fmt={fmt}
-      />
-    )}
-
-        {tab==="formules" && (
+      {tab==="formules" && (
         <div>
           <p style={{fontSize:12,color:"#6b7280",marginBottom:14,background:"#f0faf0",borderRadius:10,padding:"8px 14px"}}>
             ✏️ Modifiez directement les quantités (kg) dans le tableau — les coûts se recalculent en temps réel.
@@ -1805,7 +1440,7 @@ function App() {
           <div style={{display:"grid",gap:16}}>
           {FMLS.map(function(f){
             var compoActif = (customFmls[f.id]&&customFmls[f.id].compo) ? customFmls[f.id].compo : f.compo;
-            var coutTotal  = calcP(f,mats,customFmls) + Number(mainOeuvre||0);
+            var coutTotal  = calcP(f,mats,customFmls);
             var modifie    = !!(customFmls[f.id]&&customFmls[f.id].compo);
             return (
               <div key={f.id} style={Object.assign({},card,{borderTop:"4px solid "+f.c,padding:0,overflow:"hidden"})}>
@@ -1825,7 +1460,6 @@ function App() {
                     <div style={{textAlign:"right",background:f.bg,borderRadius:10,padding:"8px 14px"}}>
                       <div style={{fontSize:10,color:f.c,fontWeight:700}}>Coût / sac 50kg</div>
                       <div style={{fontSize:18,fontWeight:800,color:f.c}}>{fmt(coutTotal)}</div>
-                      {mainOeuvre>0 && <div style={{fontSize:9,color:f.c,opacity:0.7}}>dont MO: {fmt(mainOeuvre)}</div>}
                     </div>
                     {modifie && (
                       <button onClick={function(){
@@ -1994,48 +1628,6 @@ function App() {
             {cfgOk?"✅ Sauvegardé !":"💾 Enregistrer"}
           </button>
           <hr style={{border:"none",borderTop:"1px solid #e5e7eb",margin:"18px 0"}}/>
-
-          {/* Mentions légales */}
-          <div style={{background:"#f8faff",borderRadius:16,padding:"18px",marginBottom:18,border:"1px solid #dbeafe"}}>
-            <h4 style={{color:"#1e40af",marginBottom:8,fontSize:14}}>⚖️ Protection juridique</h4>
-            <div style={{fontSize:12,color:"#374151",lineHeight:1.8}}>
-              <div>© 2025 <strong>AgriFeed Pro™</strong> — Tous droits réservés</div>
-              <div>Logiciel propriétaire — Toute reproduction interdite</div>
-              <div style={{marginTop:6,padding:"8px 12px",background:"#eff6ff",borderRadius:8,fontSize:11,color:"#1d4ed8"}}>
-                🛡️ Ce logiciel est protégé par le droit d'auteur et les conventions internationales sur la propriété intellectuelle. Toute copie, modification ou distribution non autorisée est passible de poursuites judiciaires.
-              </div>
-              <div style={{marginTop:6,fontSize:11,color:"#6b7280"}}>
-                Propriétaire : Kan Douedon Urbain<br/>
-                Contact : 0153255654<br/>
-                Version : 2.0.2025 · Protection OAPI en cours
-              </div>
-            </div>
-          </div>
-
-          {/* Main d'oeuvre */}
-          <div style={{background:"#f0faf0",borderRadius:16,padding:"18px",marginBottom:18}}>
-            <h4 style={{color:"#1a2e1a",marginBottom:4,fontSize:14}}>👷 Main d'œuvre par sac</h4>
-            <p style={{fontSize:12,color:"#6b7280",marginBottom:10}}>Montant ajouté au coût de chaque sac dans les formules standard.</p>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <input type="number" min="0" step="100"
-                style={{flex:1,border:"2px solid #c6e6c6",borderRadius:10,padding:"10px 12px",fontSize:15,outline:"none"}}
-                value={mainOeuvre}
-                onChange={function(e){
-                  var v = Number(e.target.value)||0;
-                  setMainOeuvre(v);
-                  fbSave("config","mainOeuvre",{val:v});
-                }}/>
-              <span style={{fontSize:13,fontWeight:700,color:"#2d6e2d"}}>FCFA</span>
-            </div>
-          </div>
-
-          {/* Changer le code d'accès employé */}
-          <div style={{background:"#f0faf0",borderRadius:16,padding:"18px",marginBottom:18}}>
-            <h4 style={{color:"#1a2e1a",marginBottom:4,fontSize:14}}>🔐 Code d'accès Espace Employé</h4>
-            <p style={{fontSize:12,color:"#6b7280",marginBottom:12}}>Changez le code pour que vos clients ne puissent pas entrer ici.</p>
-            <PinChanger employeePin={employeePin} setEmployeePin={setEmployeePin} gc={gc}/>
-          </div>
-
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
             <button onClick={function(){setAdminOk(false);goHome();}} style={{background:"#fff",color:"#ef4444",border:"2px solid #ef4444",borderRadius:10,padding:"10px 18px",cursor:"pointer",fontWeight:700,fontSize:13}}>
               🚪 Déconnexion employé
@@ -2134,7 +1726,7 @@ function installPWA() {
 </script>
 
 <!-- Bouton flottant "Installer l'app" -->
-<div id="pwa-install-btn" onclick="installPWA()" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0d2b0d,#2d6e2d);color:#fff;border:none;borderRadius:30px;padding:12px 24px;cursor:pointer;fontWeight:700;fontSize:14px;boxShadow:0 4px 20px rgba(0,0,0,0.4);zIndex:9999;align-items:center;gap:10px;white-space:nowrap;border-radius:30px;">
+<div id="pwa-install-btn" onclick="installPWA()" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0d2b0d,#2d6e2d);color:#fff;border:none;border-radius:30px;padding:12px 24px;cursor:pointer;font-weight:700;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:9999;align-items:center;gap:10px;white-space:nowrap;">
   <span style="font-size:20px">📲</span>
   <span>Installer AgriFeed Pro</span>
 </div>
