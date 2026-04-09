@@ -438,6 +438,9 @@ function App() {
   const [customFmls, setCustomFmls] = useState(function(){ return lsGet("customFmls",{}); });
   const [prixIngs,  setPrixIngs]  = useState(function(){ return lsGet("prixIngs",{}); });
   const [editIngP,  setEditIngP]  = useState({});
+  const [inventaire, setInventaire] = useState(function(){ return lsGet("inventaire",[]); });
+const [invForm, setInvForm] = useState({matId:"", type:"entree", qte:"", note:"", date:today()});
+const [invOk, setInvOk] = useState(false);
   const [fbOk,      setFbOk]      = useState(false);
   const [view,     setView]     = useState("accueil");
   const [adminOk,  setAdminOk]  = useState(false);
@@ -461,6 +464,7 @@ function App() {
   useEffect(function(){ lsSet("prixVente",  prixVente);  }, [prixVente]);
   useEffect(function(){ lsSet("customFmls", customFmls); }, [customFmls]);
   useEffect(function(){ lsSet("prixIngs",  prixIngs);  }, [prixIngs]);
+  useEffect(function(){ lsSet("inventaire", inventaire); }, [inventaire]);
 
   // ── Firebase temps réel ──
   useEffect(function() {
@@ -496,10 +500,16 @@ function App() {
         if(d.exists){ var v=d.data(); setPrixVente(v); lsSet("prixVente",v); }
       }).catch(function(){});
       db.collection("config").doc("prixIngs").get().then(function(d){
+        
         if(d.exists){ var v=d.data(); setPrixIngs(v); lsSet("prixIngs",v); }
       }).catch(function(){});
     }
-
+db.collection("inventaire").onSnapshot(function(snap) {
+  var docs = [];
+  snap.forEach(function(d){ docs.push(Object.assign({},d.data(),{id:d.id})); });
+  docs.sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+  if(docs.length>0){ setInventaire(docs); lsSet("inventaire",docs); }
+}, function(err){ console.warn("inventaire:",err); });
     // Essayer immédiatement puis toutes les 500ms jusqu'à connexion
     connectFirebase();
     var timer = setInterval(function(){
@@ -1169,7 +1179,7 @@ function App() {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:5,marginBottom:22,background:"#fff",borderRadius:20,padding:7,boxShadow:"0 4px 18px rgba(45,110,45,0.14)",flexWrap:"wrap"}}>
-        {[{id:"commandes",l:"📋 Commandes"},{id:"fc",l:"🔬 Formules"+(nbFC>0?" ("+nbFC+")":"")},{id:"matieres",l:"💰 Prix matières"},{id:"prixvente",l:"🏷️ Prix de vente"},{id:"prixings",l:"🧪 Prix ingrédients"},{id:"formules",l:"📊 Formules std"},{id:"excel",l:"📥 Excel"},{id:"qr",l:"📱 QR Code"},{id:"config",l:"⚙️ Moulin"}].map(function(t){
+        {[{id:"commandes",l:"📋 Commandes"},{id:"fc",l:"🔬 Formules"+(nbFC>0?" ("+nbFC+")":"")},{id:"matieres",l:"💰 Prix matières"},{id:"prixvente",l:"🏷️ Prix de vente"},{id:"prixings",l:"🧪 Prix ingrédients"},{id:"formules",l:"📊 Formules std"},{id:"excel",l:"📥 Excel"},{id:"qr",l:"📱 QR Code"},{id:"inventaire",l:"📦 Inventaire"}{id:"config",l:"⚙️ Moulin"}].map(function(t){
           return <button key={t.id} onClick={function(){setTab(t.id);}} style={{background:tab===t.id?gc:"transparent",color:tab===t.id?"#fff":"#6b7280",border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:13}}>{t.l}</button>;
         })}
       </div>
@@ -1606,6 +1616,52 @@ function App() {
           </div>
         </div>
       )}
+      {tab==="inventaire" && (
+  <div>
+    <h2 style={{fontSize:20,marginBottom:4,color:"#1a2e1a",fontWeight:700}}>📦 Gestion des Stocks</h2>
+    <p style={{color:"#9ca3af",fontSize:12,marginBottom:16}}>Entrées et sorties de matières premières</p>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:20}}>
+      {mats.map(function(m){
+        var entrees = inventaire.filter(function(i){return i.matId===m.id && i.type==="entree";}).reduce(function(s,i){return s+(parseFloat(i.qte)||0);},0);
+        var sorties = inventaire.filter(function(i){return i.matId===m.id && i.type==="sortie";}).reduce(function(s,i){return s+(parseFloat(i.qte)||0);},0);
+        var stock = entrees - sorties;
+        var alerte = stock < 100;
+        return (
+          <div key={m.id} style={{background:"#fff",borderRadius:14,padding:"14px 12px",boxShadow:"0 2px 10px rgba(0,0,0,0.07)",border:"2px solid "+(alerte?"#fca5a5":"#e5e7eb")}}>
+            <div style={{fontSize:11,color:"#6b7280",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{m.nom}</div>
+            <div style={{fontSize:22,fontWeight:800,color:alerte?"#dc2626":"#059669"}}>{stock.toLocaleString("fr-FR")}</div>
+            <div style={{fontSize:11,color:"#9ca3af"}}>{m.u}</div>
+            {alerte && <div style={{fontSize:10,color:"#dc2626",fontWeight:700,marginTop:4}}>⚠️ Stock bas</div>}
+          </div>
+        );
+      })}
+    </div>
+    <div style={{background:"#fff",borderRadius:22,padding:20,boxShadow:"0 4px 20px rgba(45,110,45,0.1)",marginBottom:16}}>
+      <h3 style={{marginBottom:14,color:"#1a2e1a",fontSize:15}}>➕ Ajouter un mouvement</h3>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <div>
+          <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:5}}>Matière *</label>
+          <select style={{width:"100%",border:"2px solid #e2e8e2",borderRadius:10,padding:"10px 13px",fontSize:14,outline:"none",boxSizing:"border-box"}} value={invForm.matId} onChange={function(e){setInvForm(Object.assign({},invForm,{matId:e.target.value}));}}>
+            <option value="">-- Choisir --</option>
+            {mats.map(function(m){ return <option key={m.id} value={m.id}>{m.nom}</option>; })}
+          </select>
+        </div>
+        <div>
+          <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:5}}>Type *</label>
+          <select style={{width:"100%",border:"2px solid #e2e8e2",borderRadius:10,padding:"10px 13px",fontSize:14,outline:"none",boxSizing:"border-box"}} value={invForm.type} onChange={function(e){setInvForm(Object.assign({},invForm,{type:e.target.value}));}}>
+            <option value="entree">📥 Entrée (achat)</option>
+            <option value="sortie">📤 Sortie (production)</option>
+          </select>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <div>
+          <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:5}}>Quantité (kg) *</label>
+          <input type="number" min="0" style={{width:"100%",border:"2px solid #e2e8e2",borderRadius:10,padding:"10px 13px",fontSize:14,outline:"none",boxSizing:"border-box"}} placeholder="Ex: 500" value={invForm.qte} onChange={function(e){setInvForm(Object.assign({},invForm,{qte:e.target.value}));}}/>
+        </div>
+        <div>
+          <label style={{display:"block",fontSize:11,color:"#6b7280",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:5}}>Date</label>
+          <input type="text" style={{width:"100%",border:"2px solid #e2
 
       {/* ── Config ── */}
       {tab==="config" && (
